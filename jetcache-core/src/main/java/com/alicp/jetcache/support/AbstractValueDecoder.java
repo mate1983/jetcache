@@ -8,11 +8,9 @@ import java.util.function.Function;
  *
  * @author <a href="mailto:areyouok@gmail.com">huangli</a>
  */
-public abstract class AbstractValueDecoder implements Function<byte[], Object>, ValueEncoders {
+public abstract class AbstractValueDecoder implements Function<byte[], Object> {
 
     protected boolean useIdentityNumber;
-
-    private DecoderMap decoderMap = DecoderMap.defaultInstance();
 
     public AbstractValueDecoder(boolean useIdentityNumber) {
         this.useIdentityNumber = useIdentityNumber;
@@ -36,24 +34,20 @@ public abstract class AbstractValueDecoder implements Function<byte[], Object>, 
     public Object apply(byte[] buffer) {
         try {
             if (useIdentityNumber) {
-                decoderMap.initDefaultDecoder();
+                DecoderMap.registerBuildInDecoder();
                 int identityNumber = parseHeader(buffer);
-                AbstractValueDecoder decoder = decoderMap.getDecoder(identityNumber);
+                AbstractValueDecoder decoder = DecoderMap.getDecoder(identityNumber);
                 Objects.requireNonNull(decoder, "no decoder for identity number:" + identityNumber);
                 return decoder.doApply(buffer);
             } else {
                 return doApply(buffer);
             }
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new CacheEncodeException("decode error", e);
         }
     }
 
     public boolean isUseIdentityNumber() {
         return useIdentityNumber;
-    }
-
-    public void setDecoderMap(DecoderMap decoderMap) {
-        this.decoderMap = decoderMap;
     }
 }

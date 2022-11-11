@@ -7,7 +7,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -123,21 +126,21 @@ public class RefreshCache<K, V> extends LoadingCache<K, V> {
     }
 
     @Override
-    public V get(K key) throws CacheInvokeException {
+    public CacheGetResult<V> GET(K key) {
         if (config.getRefreshPolicy() != null && hasLoader()) {
             addOrUpdateRefreshTask(key, null);
         }
-        return super.get(key);
+        return cache.GET(key);
     }
 
     @Override
-    public Map<K, V> getAll(Set<? extends K> keys) throws CacheInvokeException {
+    public MultiGetResult<K, V> GET_ALL(Set<? extends K> keys) {
         if (config.getRefreshPolicy() != null && hasLoader()) {
             for (K key : keys) {
                 addOrUpdateRefreshTask(key, null);
             }
         }
-        return super.getAll(keys);
+        return cache.GET_ALL(keys);
     }
 
     class RefreshTask implements Runnable {

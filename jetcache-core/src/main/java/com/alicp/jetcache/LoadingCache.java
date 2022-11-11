@@ -1,8 +1,9 @@
 package com.alicp.jetcache;
 
 import com.alicp.jetcache.event.CacheEvent;
+
 import java.util.HashMap;
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -57,7 +58,7 @@ public class LoadingCache<K, V> extends SimpleProxyCache<K, V> {
             } else {
                 kvMap = new HashMap<>();
             }
-            Set<K> keysNeedLoad = new LinkedHashSet<>();
+            Set<K> keysNeedLoad = new HashSet<>();
             keys.forEach((k) -> {
                 if (!kvMap.containsKey(k)) {
                     keysNeedLoad.add(k);
@@ -72,12 +73,10 @@ public class LoadingCache<K, V> extends SimpleProxyCache<K, V> {
                     loadResult = loader.loadAll(keysNeedLoad);
 
                     CacheLoader<K, V> theLoader = loader;
-                    Map<K, V> updateValues = new HashMap<>();
-                    loadResult.forEach((k,v)->{
-                        if (needUpdate(v, theLoader)){
-                            updateValues.put(k, v);
-                        }
-                    });
+                    Map<K, V> updateValues = loadResult.entrySet().stream()
+                            .filter(kvEntry -> needUpdate(kvEntry.getValue(), theLoader))
+                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
                     // batch put
                     if (!updateValues.isEmpty()) {
                         PUT_ALL(updateValues);

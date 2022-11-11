@@ -3,20 +3,15 @@ package com.alicp.jetcache.redis;
 import com.alicp.jetcache.Cache;
 import com.alicp.jetcache.LoadingCacheTest;
 import com.alicp.jetcache.RefreshCacheTest;
-import com.alicp.jetcache.redis.lettuce.RedisLettuceCacheTest;
 import com.alicp.jetcache.support.*;
 import com.alicp.jetcache.test.external.AbstractExternalCacheTest;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.junit.Assert;
 import org.junit.Test;
-import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisCluster;
 import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.JedisSentinelPool;
-import redis.clients.jedis.UnifiedJedis;
-import redis.clients.jedis.util.Pool;
+import redis.clients.util.Pool;
 
 import java.util.HashSet;
 import java.util.Random;
@@ -36,20 +31,9 @@ public class RedisCacheTest extends AbstractExternalCacheTest {
         pc.setMinIdle(2);
         pc.setMaxIdle(10);
         pc.setMaxTotal(10);
-        JedisPool pool = new JedisPool(pc, "127.0.0.1", 6379);
+        JedisPool pool = new JedisPool(pc, "localhost", 6379);
 
-        testImpl(pool);
-    }
-
-    @Test
-    public void testJedisPooled() throws Exception {
-        GenericObjectPoolConfig pc = new GenericObjectPoolConfig();
-        pc.setMinIdle(2);
-        pc.setMaxIdle(10);
-        pc.setMaxTotal(10);
-        JedisPooled jedis = new JedisPooled(pc, "127.0.0.1", 6379);
-
-        testImpl(jedis);
+        testWithPool(pool);
     }
 
     @Test
@@ -65,63 +49,62 @@ public class RedisCacheTest extends AbstractExternalCacheTest {
         sentinels.add("127.0.0.1:26381");
         JedisSentinelPool pool = new JedisSentinelPool("mymaster", sentinels, pc);
 
-        testImpl(pool);
+        testWithPool(pool);
     }
 
-    @Test
-    public void testCluster() throws Exception {
-        if (!RedisLettuceCacheTest.checkOS()) {
-            return;
-        }
-        Set<HostAndPort> jedisClusterNodes = new HashSet<HostAndPort>();
-        jedisClusterNodes.add(new HostAndPort("127.0.0.1", 7000));
-        jedisClusterNodes.add(new HostAndPort("127.0.0.1", 7001));
-        jedisClusterNodes.add(new HostAndPort("127.0.0.1", 7002));
-        JedisCluster jedis = new JedisCluster(jedisClusterNodes);
-        testImpl(jedis);
-    }
-
-    private RedisCacheBuilder createCacheBuilder(Object jedis) {
-        RedisCacheBuilder builder = RedisCacheBuilder.createRedisCacheBuilder()
+    private void testWithPool(Pool<Jedis> pool) throws Exception {
+        cache = RedisCacheBuilder.createRedisCacheBuilder()
                 .keyConvertor(FastjsonKeyConvertor.INSTANCE)
                 .valueEncoder(JavaValueEncoder.INSTANCE)
                 .valueDecoder(JavaValueDecoder.INSTANCE)
-                .keyPrefix(new Random().nextInt() + "");
-        if (jedis instanceof Pool) {
-            builder.jedisPool((Pool<Jedis>) jedis);
-        } else {
-            builder.jedis((UnifiedJedis) jedis);
-        }
-        return builder;
-    }
-
-    private void testImpl(Object jedis) throws Exception {
-        cache = createCacheBuilder(jedis)
+                .jedisPool(pool)
+                .keyPrefix(new Random().nextInt() + "")
                 .expireAfterWrite(500, TimeUnit.MILLISECONDS)
                 .buildCache();
 
-        if (jedis instanceof JedisPooled) {
-            Assert.assertSame(jedis, cache.unwrap(JedisPooled.class));
-        } else if (jedis instanceof JedisCluster) {
-            Assert.assertSame(jedis, cache.unwrap(JedisCluster.class));
-        } else if (jedis instanceof Pool) {
-            Assert.assertSame(jedis, cache.unwrap(Pool.class));
+        Assert.assertSame(pool, cache.unwrap(Pool.class));
+        if (pool instanceof JedisPool) {
+            Assert.assertSame(pool, cache.unwrap(JedisPool.class));
+        } else {
+            Assert.assertSame(pool, cache.unwrap(JedisSentinelPool.class));
         }
 
         baseTest();
         fastjsonKeyCoverterTest();
         expireAfterWriteTest(cache.config().getExpireAfterWriteInMillis());
 
-        LoadingCacheTest.loadingCacheTest(createCacheBuilder(jedis), 0);
-        RefreshCacheTest.refreshCacheTest(createCacheBuilder(jedis), 200, 100);
+        LoadingCacheTest.loadingCacheTest(RedisCacheBuilder.createRedisCacheBuilder()
+                .keyConvertor(FastjsonKeyConvertor.INSTANCE)
+                .valueEncoder(JavaValueEncoder.INSTANCE)
+                .valueDecoder(JavaValueDecoder.INSTANCE)
+                .jedisPool(pool)
+                .keyPrefix(new Random().nextInt() + ""), 0);
+        RefreshCacheTest.refreshCacheTest(RedisCacheBuilder.createRedisCacheBuilder()
+                .keyConvertor(FastjsonKeyConvertor.INSTANCE)
+                .valueEncoder(JavaValueEncoder.INSTANCE)
+                .valueDecoder(JavaValueDecoder.INSTANCE)
+                .jedisPool(pool)
+                .keyPrefix(new Random().nextInt() + ""), 200, 100);
 
 
-        cache = createCacheBuilder(jedis).buildCache();
+        cache = RedisCacheBuilder.createRedisCacheBuilder()
+                .keyConvertor(null)
+                .valueEncoder(KryoValueEncoder.INSTANCE)
+                .valueDecoder(KryoValueDecoder.INSTANCE)
+                .jedisPool(pool)
+                .keyPrefix(new Random().nextInt() + "")
+                .buildCache();
         nullKeyConvertorTest();
 
         int thread = 10;
         int time = 3000;
-        cache = createCacheBuilder(jedis).buildCache();
+        cache = RedisCacheBuilder.createRedisCacheBuilder()
+                .keyConvertor(FastjsonKeyConvertor.INSTANCE)
+                .valueEncoder(KryoValueEncoder.INSTANCE)
+                .valueDecoder(KryoValueDecoder.INSTANCE)
+                .jedisPool(pool)
+                .keyPrefix(new Random().nextInt() + "")
+                .buildCache();
         concurrentTest(thread, 500, time);
     }
 
@@ -155,9 +138,9 @@ public class RedisCacheTest extends AbstractExternalCacheTest {
         pc.setMinIdle(2);
         pc.setMaxIdle(10);
         pc.setMaxTotal(10);
-        JedisPool pool1 = new JedisPool(pc, "127.0.0.1", 6379);
-        JedisPool pool2 = new JedisPool(pc, "127.0.0.1", 6380);
-        JedisPool pool3 = new JedisPool(pc, "127.0.0.1", 6381);
+        JedisPool pool1 = new JedisPool(pc, "localhost", 6379);
+        JedisPool pool2 = new JedisPool(pc, "localhost", 6380);
+        JedisPool pool3 = new JedisPool(pc, "localhost", 6381);
 
         RedisCacheBuilder builder = RedisCacheBuilder.createRedisCacheBuilder();
         builder.setJedisPool(pool1);
@@ -179,10 +162,10 @@ public class RedisCacheTest extends AbstractExternalCacheTest {
     private void readFromSlaveTestAsserts(JedisPool pool1, RedisCacheBuilder builder) throws InterruptedException {
         Cache cache = builder.buildCache();
         cache.put("readFromSlaveTest_K1", "V1");
-        Assert.assertNotSame(pool1, ((RedisCache) cache).readCommands());
-        Assert.assertNotSame(pool1, ((RedisCache) cache).readCommands());
-        Assert.assertNotSame(pool1, ((RedisCache) cache).readCommands());
-        Assert.assertNotSame(pool1, ((RedisCache) cache).readCommands());
+        Assert.assertNotSame(pool1, ((RedisCache) cache).getReadPool());
+        Assert.assertNotSame(pool1, ((RedisCache) cache).getReadPool());
+        Assert.assertNotSame(pool1, ((RedisCache) cache).getReadPool());
+        Assert.assertNotSame(pool1, ((RedisCache) cache).getReadPool());
         Thread.sleep(15);
         Assert.assertEquals("V1", cache.get("readFromSlaveTest_K1"));
         Assert.assertEquals("V1", cache.get("readFromSlaveTest_K1"));

@@ -1,17 +1,14 @@
 package com.alicp.jetcache.test.spring;
 
-import com.alicp.jetcache.Cache;
-import com.alicp.jetcache.CacheManager;
-import com.alicp.jetcache.anno.CacheConsts;
-import com.alicp.jetcache.template.QuickConfig;
 import com.alicp.jetcache.test.beans.FactoryBeanTarget;
 import com.alicp.jetcache.test.beans.Service;
 import com.alicp.jetcache.test.beans.TestBean;
 import com.alicp.jetcache.test.support.DynamicQuery;
 import com.alicp.jetcache.test.support.DynamicQueryWithEquals;
 import org.junit.Assert;
-
-import java.util.UUID;
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 
 /**
  * Created on 2016/11/23.
@@ -28,7 +25,6 @@ public class SpringTest extends SpringTestBase {
 
         FactoryBeanTarget target = (FactoryBeanTarget) context.getBean("factoryBeanTarget");
         Assert.assertEquals(target.count(), target.count());
-        testCacheManager();
     }
 
     private void testService(Service service, TestBean bean) throws Exception {
@@ -58,10 +54,8 @@ public class SpringTest extends SpringTestBase {
 
     }
 
-    @SuppressWarnings("AliAccessStaticViaInstance")
     private void testTestBean(TestBean bean) throws Exception {
         Assert.assertNotEquals(bean.noCacheCount(), bean.noCacheCount());
-        //noinspection AliAccessStaticViaInstance
         Assert.assertEquals(bean.staticCount(), bean.staticCount());
         Assert.assertEquals(bean.count(), bean.count());
         Assert.assertEquals(bean.countWithLocalCache(), bean.countWithLocalCache());
@@ -145,14 +139,6 @@ public class SpringTest extends SpringTestBase {
 
         Assert.assertEquals(bean.count("K1"), bean.count("K1"));
         Assert.assertNotEquals(bean.count("K1"), bean.count("K2"));
-    }
-
-    private void testCacheManager() {
-        String cacheName = UUID.randomUUID().toString();
-        CacheManager cm = context.getBean(CacheManager.class);
-        Cache c = cm.getOrCreateCache(QuickConfig.newBuilder(cacheName).build());
-        Cache c2 = cm.getCache(CacheConsts.DEFAULT_AREA, cacheName);
-        Assert.assertSame(c, c2);
     }
 
 }

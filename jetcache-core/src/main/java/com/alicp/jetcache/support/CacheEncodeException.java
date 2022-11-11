@@ -15,8 +15,4 @@ public class CacheEncodeException extends CacheException {
         super(message, cause);
     }
 
-    public CacheEncodeException(String message) {
-        super(message);
-    }
-
 }

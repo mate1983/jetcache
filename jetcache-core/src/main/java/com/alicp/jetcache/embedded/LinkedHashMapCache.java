@@ -81,7 +81,6 @@ public class LinkedHashMapCache<K, V> extends AbstractEmbeddedCache<K, V> {
             }
         }
 
-        @Override
         public Object getValue(Object key) {
             synchronized (lock) {
                 return get(key);
@@ -102,7 +101,6 @@ public class LinkedHashMapCache<K, V> extends AbstractEmbeddedCache<K, V> {
             return values;
         }
 
-        @Override
         public void putValue(Object key, Object value) {
             synchronized (lock) {
                 put(key, value);

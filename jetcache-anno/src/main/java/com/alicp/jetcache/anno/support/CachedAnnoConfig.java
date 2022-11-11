@@ -19,7 +19,6 @@ public class CachedAnnoConfig extends CacheAnnoConfig {
     private long expire;
     private long localExpire;
     private CacheType cacheType;
-    private boolean syncLocal;
     private int localLimit;
     private boolean cacheNullValue;
     private String serialPolicy;
@@ -133,13 +132,5 @@ public class CachedAnnoConfig extends CacheAnnoConfig {
 
     public void setLocalExpire(long localExpire) {
         this.localExpire = localExpire;
-    }
-
-    public boolean isSyncLocal() {
-        return syncLocal;
-    }
-
-    public void setSyncLocal(boolean syncLocal) {
-        this.syncLocal = syncLocal;
     }
 }

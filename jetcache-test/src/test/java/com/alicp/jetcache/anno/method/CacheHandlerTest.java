@@ -4,42 +4,30 @@
 package com.alicp.jetcache.anno.method;
 
 import com.alicp.jetcache.Cache;
-import com.alicp.jetcache.CacheManager;
 import com.alicp.jetcache.anno.CacheConsts;
 import com.alicp.jetcache.anno.CacheType;
 import com.alicp.jetcache.anno.KeyConvertor;
-import com.alicp.jetcache.anno.support.CacheContext;
-import com.alicp.jetcache.anno.support.CachedAnnoConfig;
-import com.alicp.jetcache.anno.support.ConfigMap;
-import com.alicp.jetcache.anno.support.ConfigProvider;
-import com.alicp.jetcache.anno.support.GlobalCacheConfig;
-import com.alicp.jetcache.anno.support.JetCacheBaseBeans;
+import com.alicp.jetcache.anno.support.*;
 import com.alicp.jetcache.embedded.LinkedHashMapCacheBuilder;
 import com.alicp.jetcache.support.FastjsonKeyConvertor;
-import com.alicp.jetcache.test.anno.TestUtil;
 import com.alicp.jetcache.test.support.DynamicQuery;
 import com.alicp.jetcache.testsupport.CountClass;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Method;
-import java.util.concurrent.TimeUnit;
+import static org.junit.jupiter.api.Assertions.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author <a href="mailto:areyouok@gmail.com">huangli</a>
  */
 public class CacheHandlerTest {
 
-    private ConfigProvider configProvider;
-    private CacheManager cacheManager;
+    private GlobalCacheConfig globalCacheConfig;
     private CachedAnnoConfig cachedAnnoConfig;
     private CacheInvokeConfig cacheInvokeConfig;
     private CountClass count;
@@ -48,11 +36,10 @@ public class CacheHandlerTest {
 
     @BeforeEach
     public void setup() {
-        GlobalCacheConfig globalCacheConfig = TestUtil.createGloableConfig();
-        configProvider = new ConfigProvider();
-        configProvider.setGlobalCacheConfig(globalCacheConfig);
-        configProvider.init();
-        cacheManager = new JetCacheBaseBeans().cacheManager(configProvider);
+        globalCacheConfig = new GlobalCacheConfig();
+        globalCacheConfig.setLocalCacheBuilders(new HashMap<>());
+        globalCacheConfig.setRemoteCacheBuilders(new HashMap<>());
+        globalCacheConfig.init();
         cache = LinkedHashMapCacheBuilder.createLinkedHashMapCacheBuilder()
                 .keyConvertor(FastjsonKeyConvertor.INSTANCE)
                 .buildCache();
@@ -82,13 +69,12 @@ public class CacheHandlerTest {
     }
 
     @AfterEach
-    public void tearDown() {
-        configProvider.shutdown();
+    public void stop() {
+        globalCacheConfig.shutdown();
     }
 
-
     private CacheInvokeContext createCachedInvokeContext(Invoker invoker, Method method, Object[] args) {
-        CacheInvokeContext c = configProvider.newContext(cacheManager).createCacheInvokeContext(configMap);
+        CacheInvokeContext c = globalCacheConfig.getCacheContext().createCacheInvokeContext(configMap);
         c.setCacheInvokeConfig(cacheInvokeConfig);
         cacheInvokeConfig.setCachedAnnoConfig(cachedAnnoConfig);
         c.setInvoker(invoker);

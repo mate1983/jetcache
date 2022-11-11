@@ -17,7 +17,10 @@ public interface CacheLoader<K, V> extends Function<K ,V> {
     default Map<K, V> loadAll(Set<K> keys) throws Throwable {
         Map<K, V> map = new HashMap<>();
         for (K k : keys) {
-            map.put(k, load(k));
+            V value = load(k);
+            if (value != null) {
+                map.put(k, value);
+            }
         }
         return map;
     }

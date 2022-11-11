@@ -1,9 +1,8 @@
 package com.alicp.jetcache.support;
 
-import com.alicp.jetcache.anno.SerialPolicy;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Created on 2016/10/8.
@@ -47,7 +46,7 @@ public class JavaEncoderTest extends AbstractEncoderTest {
         byte[] bytes = encoder.apply("12345");
         bytes[0] = 0;
         assertThrows(CacheEncodeException.class, () -> decoder.apply(bytes));
-        writeHeader(bytes, SerialPolicy.IDENTITY_NUMBER_KRYO4);
+        ((AbstractValueEncoder)encoder).writeHeader(bytes, KryoValueEncoder.IDENTITY_NUMBER);
         assertThrows(CacheEncodeException.class, () -> decoder.apply(bytes));
 
         encoder = JavaValueEncoder.INSTANCE;

@@ -1,23 +1,13 @@
 package com.alicp.jetcache.autoconfigure;
 
-import com.alicp.jetcache.CacheManager;
-import com.alicp.jetcache.SimpleCacheManager;
-import com.alicp.jetcache.anno.support.EncoderParser;
 import com.alicp.jetcache.anno.support.GlobalCacheConfig;
-import com.alicp.jetcache.anno.support.JetCacheBaseBeans;
-import com.alicp.jetcache.anno.support.KeyConvertorParser;
 import com.alicp.jetcache.anno.support.SpringConfigProvider;
-import com.alicp.jetcache.support.StatInfo;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-
-import java.util.function.Consumer;
 
 /**
  * Created on 2016/11/17.
@@ -33,46 +23,42 @@ import java.util.function.Consumer;
         MockRemoteCacheAutoConfiguration.class,
         LinkedHashMapAutoConfiguration.class,
         RedisLettuceAutoConfiguration.class,
-        RedisSpringDataAutoConfiguration.class,
-        RedissonAutoConfiguration.class})
+        RedisLettuce4AutoConfiguration.class})
 public class JetCacheAutoConfiguration {
 
     public static final String GLOBAL_CACHE_CONFIG_NAME = "globalCacheConfig";
 
+    private SpringConfigProvider _springConfigProvider = new SpringConfigProvider();
+
+    private AutoConfigureBeans _autoConfigureBeans = new AutoConfigureBeans();
+
+    private GlobalCacheConfig _globalCacheConfig;
+
     @Bean
     @ConditionalOnMissingBean
-    public SpringConfigProvider springConfigProvider(
-            @Autowired ApplicationContext applicationContext,
-            @Autowired GlobalCacheConfig globalCacheConfig,
-            @Autowired(required = false) EncoderParser encoderParser,
-            @Autowired(required = false) KeyConvertorParser keyConvertorParser,
-            @Autowired(required = false) Consumer<StatInfo> metricsCallback) {
-        return new JetCacheBaseBeans().springConfigProvider(applicationContext, globalCacheConfig,
-                encoderParser, keyConvertorParser, metricsCallback);
-    }
-
-    @Bean(name = "jcCacheManager")
-    @ConditionalOnMissingBean
-    public CacheManager cacheManager(@Autowired SpringConfigProvider springConfigProvider) {
-        SimpleCacheManager cacheManager = new SimpleCacheManager();
-        cacheManager.setCacheBuilderTemplate(springConfigProvider.getCacheBuilderTemplate());
-        return cacheManager;
+    public SpringConfigProvider springConfigProvider() {
+        return _springConfigProvider;
     }
 
     @Bean
     public AutoConfigureBeans autoConfigureBeans() {
-        return new AutoConfigureBeans();
+        return _autoConfigureBeans;
     }
 
     @Bean
-    public static BeanDependencyManager beanDependencyManager() {
+    public static BeanDependencyManager beanDependencyManager(){
         return new BeanDependencyManager();
     }
 
     @Bean(name = GLOBAL_CACHE_CONFIG_NAME)
-    public GlobalCacheConfig globalCacheConfig(AutoConfigureBeans autoConfigureBeans, JetCacheProperties props) {
-        GlobalCacheConfig _globalCacheConfig = new GlobalCacheConfig();
+    public GlobalCacheConfig globalCacheConfig(SpringConfigProvider configProvider,
+                                                            AutoConfigureBeans autoConfigureBeans,
+                                                            JetCacheProperties props) {
+        if (_globalCacheConfig != null) {
+            return _globalCacheConfig;
+        }
         _globalCacheConfig = new GlobalCacheConfig();
+        _globalCacheConfig.setConfigProvider(configProvider);
         _globalCacheConfig.setHiddenPackages(props.getHiddenPackages());
         _globalCacheConfig.setStatIntervalMinutes(props.getStatIntervalMinutes());
         _globalCacheConfig.setAreaInCacheName(props.isAreaInCacheName());

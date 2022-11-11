@@ -2,8 +2,7 @@ package com.alicp.jetcache.autoconfigure;
 
 import com.alicp.jetcache.AbstractCacheBuilder;
 import com.alicp.jetcache.CacheBuilder;
-import com.alicp.jetcache.anno.KeyConvertor;
-import com.alicp.jetcache.anno.support.ParserFunction;
+import com.alicp.jetcache.anno.support.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -11,10 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.util.Assert;
 
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created on 2016/11/29.
@@ -31,9 +27,12 @@ public abstract class AbstractCacheAutoInit implements InitializingBean {
     @Autowired
     protected AutoConfigureBeans autoConfigureBeans;
 
+    @Autowired
+    protected ConfigProvider configProvider;
+
     protected String[] typeNames;
 
-    private volatile boolean inited = false;
+    private boolean inited = false;
 
     public AbstractCacheAutoInit(String... cacheTypes) {
         Objects.requireNonNull(cacheTypes,"cacheTypes can't be null");
@@ -73,7 +72,7 @@ public abstract class AbstractCacheAutoInit implements InitializingBean {
 
     protected void parseGeneralConfig(CacheBuilder builder, ConfigTree ct) {
         AbstractCacheBuilder acb = (AbstractCacheBuilder) builder;
-        acb.keyConvertor(new ParserFunction(ct.getProperty("keyConvertor", KeyConvertor.FASTJSON2)));
+        acb.keyConvertor(configProvider.parseKeyConvertor(ct.getProperty("keyConvertor")));
 
         String expireAfterWriteInMillis = ct.getProperty("expireAfterWriteInMillis");
         if (expireAfterWriteInMillis == null) {

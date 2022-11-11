@@ -32,6 +32,7 @@ public class RefreshCacheTest extends AbstractCacheTest {
     public void setup() {
         cache = LinkedHashMapCacheBuilder.createLinkedHashMapCacheBuilder()
                 .buildCache();
+        cache = new MonitoredCache<>(cache);
         cache = new RefreshCache<>(cache);
     }
 

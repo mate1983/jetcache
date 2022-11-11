@@ -1,6 +1,5 @@
 package com.alicp.jetcache.support;
 
-import com.alicp.jetcache.anno.SerialPolicy;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.serializers.CompatibleFieldSerializer;
@@ -16,7 +15,9 @@ public class KryoValueEncoder extends AbstractValueEncoder {
 
     public static final KryoValueEncoder INSTANCE = new KryoValueEncoder(true);
 
-    private static int INIT_BUFFER_SIZE = 256;
+    protected static int IDENTITY_NUMBER = 0x4A953A82;
+
+    private static int INIT_BUFFER_SIZE = 512;
 
     static ThreadLocal<Object[]> kryoThreadLocal = ThreadLocal.withInitial(() -> {
         Kryo kryo = new Kryo();
@@ -48,7 +49,7 @@ public class KryoValueEncoder extends AbstractValueEncoder {
 
             try {
                 if (useIdentityNumber) {
-                    writeInt(output, SerialPolicy.IDENTITY_NUMBER_KRYO4);
+                    output.writeInt(IDENTITY_NUMBER);
                 }
                 kryo.writeClassAndObject(output, value);
                 return output.toBytes();
@@ -64,14 +65,6 @@ public class KryoValueEncoder extends AbstractValueEncoder {
             sb.append("msg=").append(e.getMessage());
             throw new CacheEncodeException(sb.toString(), e);
         }
-    }
-
-    private void writeInt(Output output, int value) {
-        // kryo5 change writeInt to little endian, so we write int manually
-        output.writeByte(value >>> 24);
-        output.writeByte(value >>> 16);
-        output.writeByte(value >>> 8);
-        output.writeByte(value);
     }
 
 }

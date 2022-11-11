@@ -31,7 +31,6 @@ public class CachePointcut extends StaticMethodMatcherPointcut implements ClassF
         this.basePackages = basePackages;
     }
 
-    @Override
     public boolean matches(Class clazz) {
         boolean b = matchesImpl(clazz);
         logger.trace("check class match {}: {}", b, clazz);
@@ -94,7 +93,6 @@ public class CachePointcut extends StaticMethodMatcherPointcut implements ClassF
         return false;
     }
 
-    @Override
     public boolean matches(Method method, Class targetClass) {
         boolean b = matchesImpl(method, targetClass);
         if (b) {
@@ -137,7 +135,7 @@ public class CachePointcut extends StaticMethodMatcherPointcut implements ClassF
             parseByTargetClass(cac, targetClass, name, paramTypes);
 
             if (!cac.isEnableCacheContext() && cac.getCachedAnnoConfig() == null &&
-                    cac.getInvalidateAnnoConfigs() == null && cac.getUpdateAnnoConfig() == null) {
+                    cac.getInvalidateAnnoConfig() == null && cac.getUpdateAnnoConfig() == null) {
                 cacheConfigMap.putByMethodInfo(key, CacheInvokeConfig.getNoCacheInvokeConfigInstance());
                 return false;
             } else {

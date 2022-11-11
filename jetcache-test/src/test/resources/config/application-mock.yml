@@ -6,27 +6,24 @@ jetcache:
   local:
     default:
       type: caffeine
-      keyConvertor: fastjson2
+      keyConvertor: fastjson
       limit: 200
       defaultExpireInMillis: 10000
     A1:
       type: linkedhashmap
-      keyConvertor: fastjson2
+      keyConvertor: fastjson
       limit: 100
       expireAfterAccess: true
       defaultExpireInMillis: 10000
   remote:
     default:
       type: mock
-      keyConvertor: bean:myConvertor
-      valueEncoder: bean:myEncoder
-      valueDecoder: bean:myDecoder
+      keyConvertor: fastjson
       defaultExpireInMillis: 10000
       keyPrefix: mockprefix
-      broadcastChannel: projectA
     A1:
       type: mock
-      keyConvertor: fastjson2
+      keyConvertor: fastjson
       defaultExpireInMillis: 10000
       keyPrefix: mockprefix_a1
 

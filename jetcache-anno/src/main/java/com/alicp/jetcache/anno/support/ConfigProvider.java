@@ -1,21 +1,14 @@
 package com.alicp.jetcache.anno.support;
 
-import com.alicp.jetcache.CacheBuilder;
-import com.alicp.jetcache.CacheManager;
-import com.alicp.jetcache.embedded.EmbeddedCacheBuilder;
-import com.alicp.jetcache.external.ExternalCacheBuilder;
-import com.alicp.jetcache.support.AbstractLifecycle;
-import com.alicp.jetcache.support.StatInfo;
-import com.alicp.jetcache.support.StatInfoLogger;
-import com.alicp.jetcache.template.CacheBuilderTemplate;
-import com.alicp.jetcache.template.CacheMonitorInstaller;
-import com.alicp.jetcache.template.MetricsMonitorInstaller;
-import com.alicp.jetcache.template.NotifyMonitorInstaller;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.alicp.jetcache.CacheConfigException;
+import com.alicp.jetcache.anno.KeyConvertor;
+import com.alicp.jetcache.anno.SerialPolicy;
+import com.alicp.jetcache.support.*;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.annotation.Resource;
-import java.time.Duration;
+import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -24,146 +17,106 @@ import java.util.function.Function;
  *
  * @author <a href="mailto:areyouok@gmail.com">huangli</a>
  */
-public class ConfigProvider extends AbstractLifecycle {
+public class ConfigProvider {
 
-    private static final Logger logger = LoggerFactory.getLogger(ConfigProvider.class);
+    @Autowired(required = false)
+    private SimpleCacheManager cacheManager;
 
-    @Resource
-    protected GlobalCacheConfig globalCacheConfig;
-
-    protected EncoderParser encoderParser;
-    protected KeyConvertorParser keyConvertorParser;
-    private Consumer<StatInfo> metricsCallback;
-
-    private CacheBuilderTemplate cacheBuilderTemplate;
-
-    public ConfigProvider() {
-        encoderParser = new DefaultEncoderParser();
-        keyConvertorParser = new DefaultKeyConvertorParser();
-        metricsCallback = new StatInfoLogger(false);
-    }
-
-    @Override
-    protected void doInit() {
-        cacheBuilderTemplate = new CacheBuilderTemplate(globalCacheConfig.isPenetrationProtect(),
-                globalCacheConfig.getLocalCacheBuilders(), globalCacheConfig.getRemoteCacheBuilders());
-        for (CacheBuilder builder : globalCacheConfig.getLocalCacheBuilders().values()) {
-            EmbeddedCacheBuilder eb = (EmbeddedCacheBuilder) builder;
-            if (eb.getConfig().getKeyConvertor() instanceof ParserFunction) {
-                ParserFunction f = (ParserFunction) eb.getConfig().getKeyConvertor();
-                eb.setKeyConvertor(parseKeyConvertor(f.getValue()));
-            }
-        }
-        for (CacheBuilder builder : globalCacheConfig.getRemoteCacheBuilders().values()) {
-            ExternalCacheBuilder eb = (ExternalCacheBuilder) builder;
-            if (eb.getConfig().getKeyConvertor() instanceof ParserFunction) {
-                ParserFunction f = (ParserFunction) eb.getConfig().getKeyConvertor();
-                eb.setKeyConvertor(parseKeyConvertor(f.getValue()));
-            }
-            if (eb.getConfig().getValueEncoder() instanceof ParserFunction) {
-                ParserFunction f = (ParserFunction) eb.getConfig().getValueEncoder();
-                eb.setValueEncoder(parseValueEncoder(f.getValue()));
-            }
-            if (eb.getConfig().getValueDecoder() instanceof ParserFunction) {
-                ParserFunction f = (ParserFunction) eb.getConfig().getValueDecoder();
-                eb.setValueDecoder(parseValueDecoder(f.getValue()));
-            }
-        }
-        initCacheMonitorInstallers();
-    }
-
-    protected void initCacheMonitorInstallers() {
-        cacheBuilderTemplate.getCacheMonitorInstallers().add(metricsMonitorInstaller());
-        cacheBuilderTemplate.getCacheMonitorInstallers().add(notifyMonitorInstaller());
-        for (CacheMonitorInstaller i : cacheBuilderTemplate.getCacheMonitorInstallers()) {
-            if (i instanceof AbstractLifecycle) {
-                ((AbstractLifecycle) i).init();
-            }
-        }
-    }
-
-    protected CacheMonitorInstaller metricsMonitorInstaller() {
-        Duration interval = null;
-        if (globalCacheConfig.getStatIntervalMinutes() > 0) {
-            interval = Duration.ofMinutes(globalCacheConfig.getStatIntervalMinutes());
-        }
-
-        MetricsMonitorInstaller i = new MetricsMonitorInstaller(metricsCallback, interval);
-        i.init();
-        return i;
-    }
-
-    protected CacheMonitorInstaller notifyMonitorInstaller() {
-        return new NotifyMonitorInstaller(area -> globalCacheConfig.getRemoteCacheBuilders().get(area));
-    }
-
-    public CacheBuilderTemplate getCacheBuilderTemplate() {
-        return cacheBuilderTemplate;
-    }
-
-    @Override
-    public void doShutdown() {
-        try {
-            for (CacheMonitorInstaller i : cacheBuilderTemplate.getCacheMonitorInstallers()) {
-                if (i instanceof AbstractLifecycle) {
-                    ((AbstractLifecycle) i).shutdown();
+    protected static Map<String, String> parseQueryParameters(String query) {
+        Map<String, String> m = new HashMap<>();
+        if (query != null) {
+            String[] pairs = query.split("&");
+            for (String pair : pairs) {
+                int idx = pair.indexOf("=");
+                String key = idx > 0 ? pair.substring(0, idx) : pair;
+                String value = idx > 0 && pair.length() > idx + 1 ? pair.substring(idx + 1) : null;
+                if (key != null && value != null) {
+                    m.put(key, value);
                 }
             }
-        } catch (Exception e) {
-            logger.error("close fail", e);
+        }
+        return m;
+    }
+
+    public Function<Object, byte[]> parseValueEncoder(String valueEncoder) {
+        if (valueEncoder == null) {
+            throw new CacheConfigException("no serialPolicy");
+        }
+        valueEncoder = valueEncoder.trim();
+        URI uri = URI.create(valueEncoder);
+        valueEncoder = uri.getPath();
+        Map<String, String> params = parseQueryParameters(uri.getQuery());
+        boolean useIdentityNumber = true;
+        if ("false".equalsIgnoreCase(params.get("useIdentityNumber"))) {
+            useIdentityNumber = false;
+        }
+        if (SerialPolicy.KRYO.equalsIgnoreCase(valueEncoder)) {
+            return new KryoValueEncoder(useIdentityNumber);
+        } else if (SerialPolicy.JAVA.equalsIgnoreCase(valueEncoder)) {
+            return new JavaValueEncoder(useIdentityNumber);
+        } else {
+            throw new CacheConfigException("not supported:" + valueEncoder);
         }
     }
 
-    /**
-     * Keep this method for backward compatibility.
-     * NOTICE: there is no getter for encoderParser.
-     */
-    public Function<Object, byte[]> parseValueEncoder(String valueEncoder) {
-        return encoderParser.parseEncoder(valueEncoder);
-    }
-
-    /**
-     * Keep this method for backward compatibility.
-     * NOTICE: there is no getter for encoderParser.
-     */
     public Function<byte[], Object> parseValueDecoder(String valueDecoder) {
-        return encoderParser.parseDecoder(valueDecoder);
+        if (valueDecoder == null) {
+            throw new CacheConfigException("no serialPolicy");
+        }
+        valueDecoder = valueDecoder.trim();
+        URI uri = URI.create(valueDecoder);
+        valueDecoder = uri.getPath();
+        Map<String, String> params = parseQueryParameters(uri.getQuery());
+        boolean useIdentityNumber = true;
+        if ("false".equalsIgnoreCase(params.get("useIdentityNumber"))) {
+            useIdentityNumber = false;
+        }
+        if (SerialPolicy.KRYO.equalsIgnoreCase(valueDecoder)) {
+            return new KryoValueDecoder(useIdentityNumber);
+        } else if (SerialPolicy.JAVA.equalsIgnoreCase(valueDecoder)) {
+            return javaValueDecoder(useIdentityNumber);
+        } else {
+            throw new CacheConfigException("not supported:" + valueDecoder);
+        }
     }
 
-    /**
-     * Keep this method for backward compatibility.
-     * NOTICE: there is no getter for keyConvertorParser.
-     */
+    JavaValueDecoder javaValueDecoder(boolean useIdentityNumber) {
+        return new JavaValueDecoder(useIdentityNumber);
+    }
+
     public Function<Object, Object> parseKeyConvertor(String convertor) {
-        return keyConvertorParser.parseKeyConvertor(convertor);
+        if (convertor == null) {
+            return null;
+        }
+        if (KeyConvertor.FASTJSON.equalsIgnoreCase(convertor)) {
+            return FastjsonKeyConvertor.INSTANCE;
+        } else if (KeyConvertor.NONE.equalsIgnoreCase(convertor)) {
+            return null;
+        }
+        throw new CacheConfigException("not supported:" + convertor);
     }
 
     public CacheNameGenerator createCacheNameGenerator(String[] hiddenPackages) {
         return new DefaultCacheNameGenerator(hiddenPackages);
     }
 
-    public CacheContext newContext(CacheManager cacheManager) {
-        return new CacheContext(cacheManager, this, globalCacheConfig);
+    public CacheContext newContext(GlobalCacheConfig globalCacheConfig) {
+        CacheContext c = new CacheContext(globalCacheConfig);
+        if (getCacheManager() != null) {
+            c.setCacheManager(getCacheManager());
+        }
+        return c;
     }
 
-    public void setEncoderParser(EncoderParser encoderParser) {
-        this.encoderParser = encoderParser;
+    public Consumer<StatInfo> statCallback() {
+        return new StatInfoLogger(false);
     }
 
-    public void setKeyConvertorParser(KeyConvertorParser keyConvertorParser) {
-        this.keyConvertorParser = keyConvertorParser;
+    public void setCacheManager(SimpleCacheManager cacheManager) {
+        this.cacheManager = cacheManager;
     }
 
-    public GlobalCacheConfig getGlobalCacheConfig() {
-        return globalCacheConfig;
+    public SimpleCacheManager getCacheManager() {
+        return cacheManager;
     }
-
-    public void setGlobalCacheConfig(GlobalCacheConfig globalCacheConfig) {
-        this.globalCacheConfig = globalCacheConfig;
-    }
-
-    public void setMetricsCallback(Consumer<StatInfo> metricsCallback) {
-        this.metricsCallback = metricsCallback;
-    }
-
 }

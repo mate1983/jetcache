@@ -4,33 +4,60 @@
 package com.alicp.jetcache.anno.support;
 
 import com.alicp.jetcache.CacheBuilder;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.Map;
 
 /**
  * @author <a href="mailto:areyouok@gmail.com">huangli</a>
  */
-public class GlobalCacheConfig {
+public class GlobalCacheConfig implements InitializingBean, DisposableBean {
 
     private String[] hiddenPackages;
     protected int statIntervalMinutes;
-    /**
-     * for compatible reason. This property controls whether add area as remote cache key prefix.
-     * version<=2.4.3: add cache area in prefix, no config.
-     * version>2.4.3 and version <2.7: default value is true, keep same as 2.4.3 if not set.
-     * version>=2.7.0.RC: default value is false.
-     *
-     * remove in the future.
-     */
-    @Deprecated
-    private boolean areaInCacheName = false;
+    private boolean areaInCacheName = true;
     private boolean penetrationProtect = false;
     private boolean enableMethodCache = true;
 
     private Map<String, CacheBuilder> localCacheBuilders;
     private Map<String, CacheBuilder> remoteCacheBuilders;
 
+    @Autowired(required = false)
+    private ConfigProvider configProvider = new SpringConfigProvider();
+
+    private CacheContext cacheContext;
+
     public GlobalCacheConfig() {
+    }
+
+    public void init() {
+        afterPropertiesSet();
+    }
+
+    @Override
+    public synchronized void afterPropertiesSet() {
+        if (cacheContext == null) {
+            cacheContext = configProvider.newContext(this);
+            cacheContext.init();
+        }
+    }
+
+    public void shutdown() {
+        destroy();
+    }
+
+    @Override
+    public synchronized void destroy() {
+        if (cacheContext != null) {
+            cacheContext.shutdown();
+            cacheContext = null;
+        }
+    }
+
+    public CacheContext getCacheContext() {
+        return cacheContext;
     }
 
     public String[] getHiddenPackages() {
@@ -65,28 +92,18 @@ public class GlobalCacheConfig {
         this.statIntervalMinutes = statIntervalMinutes;
     }
 
-    /**
-     * for compatible reason. This property controls whether add area as remote cache key prefix.
-     * version<=2.4.3: add cache area in prefix, no config.
-     * version>2.4.3 and version <2.7: default value is true, keep same as 2.4.3 if not set.
-     * version>=2.7.0.RC: default value is false.
-     *
-     * remove in the future.
-     */
-    @Deprecated
+    public ConfigProvider getConfigProvider() {
+        return configProvider;
+    }
+
+    public void setConfigProvider(ConfigProvider configProvider) {
+        this.configProvider = configProvider;
+    }
+
     public boolean isAreaInCacheName() {
         return areaInCacheName;
     }
 
-    /**
-     * for compatible reason. This property controls whether add area as remote cache key prefix.
-     * version<=2.4.3: add cache area in prefix, no config.
-     * version>2.4.3 and version <2.7: default value is true, keep same as 2.4.3 if not set.
-     * version>=2.7.0.RC: default value is false.
-     *
-     * remove in the future.
-     */
-    @Deprecated
     public void setAreaInCacheName(boolean areaInCacheName) {
         this.areaInCacheName = areaInCacheName;
     }

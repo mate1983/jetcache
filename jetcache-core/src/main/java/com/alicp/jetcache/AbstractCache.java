@@ -1,15 +1,8 @@
 package com.alicp.jetcache;
 
 import com.alicp.jetcache.embedded.AbstractEmbeddedCache;
-import com.alicp.jetcache.event.CacheEvent;
-import com.alicp.jetcache.event.CacheGetAllEvent;
-import com.alicp.jetcache.event.CacheGetEvent;
-import com.alicp.jetcache.event.CachePutAllEvent;
-import com.alicp.jetcache.event.CachePutEvent;
-import com.alicp.jetcache.event.CacheRemoveAllEvent;
-import com.alicp.jetcache.event.CacheRemoveEvent;
+import com.alicp.jetcache.event.*;
 import com.alicp.jetcache.external.AbstractExternalCache;
-import com.alicp.jetcache.support.SquashedLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,8 +28,6 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
 
     private volatile ConcurrentHashMap<Object, LoaderLock> loaderMap;
 
-    protected volatile boolean closed;
-
     ConcurrentHashMap<Object, LoaderLock> initOrGetLoaderMap() {
         if (loaderMap == null) {
             synchronized (this) {
@@ -49,7 +40,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
     }
 
     protected void logError(String oper, Object key, Throwable e) {
-        StringBuilder sb = new StringBuilder(256);
+        StringBuilder sb = new StringBuilder(64);
         sb.append("jetcache(")
                 .append(this.getClass().getSimpleName()).append(") ")
                 .append(oper)
@@ -63,7 +54,30 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
                 // ignore
             }
         }
-        SquashedLogger.getLogger(logger).error(sb, e);
+        if (needLogStackTrace(e)) {
+            logger.error(sb.toString(), e);
+        } else {
+            sb.append(' ');
+            while (e != null) {
+                sb.append(e.getClass().getName());
+                sb.append(':');
+                sb.append(e.getMessage());
+                e = e.getCause();
+                if (e != null) {
+                    sb.append("\ncause by ");
+                }
+            }
+            logger.error(sb.toString());
+        }
+
+    }
+
+    protected boolean needLogStackTrace(Throwable e) {
+//        if (e instanceof CacheEncodeException) {
+//            return true;
+//        }
+//        return false;
+        return true;
     }
 
     public void notify(CacheEvent e) {
@@ -76,12 +90,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
     @Override
     public final CacheGetResult<V> GET(K key) {
         long t = System.currentTimeMillis();
-        CacheGetResult<V> result;
-        if (key == null) {
-            result = new CacheGetResult<V>(CacheResultCode.FAIL, CacheResult.MSG_ILLEGAL_ARGUMENT, null);
-        } else {
-            result = do_GET(key);
-        }
+        CacheGetResult<V> result = do_GET(key);
         result.future().thenRun(() -> {
             CacheGetEvent event = new CacheGetEvent(this, System.currentTimeMillis() - t, key, result);
             notify(event);
@@ -94,12 +103,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
     @Override
     public final MultiGetResult<K, V> GET_ALL(Set<? extends K> keys) {
         long t = System.currentTimeMillis();
-        MultiGetResult<K, V> result;
-        if (keys == null) {
-            result = new MultiGetResult<>(CacheResultCode.FAIL, CacheResult.MSG_ILLEGAL_ARGUMENT, null);
-        } else {
-            result = do_GET_ALL(keys);
-        }
+        MultiGetResult<K, V> result = do_GET_ALL(keys);
         result.future().thenRun(() -> {
             CacheGetAllEvent event = new CacheGetAllEvent(this, System.currentTimeMillis() - t, keys, result);
             notify(event);
@@ -139,7 +143,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
         CacheGetResult<V> r;
         if (cache instanceof RefreshCache) {
             RefreshCache<K, V> refreshCache = ((RefreshCache<K, V>) cache);
-            r = refreshCache.GET(key);
+            r = refreshCache.getTargetCache().GET(key);
             refreshCache.addOrUpdateRefreshTask(key, newLoader);
         } else {
             r = cache.GET(key);
@@ -184,21 +188,14 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
             });
             if (create[0] || ll.loaderThread == Thread.currentThread()) {
                 try {
-                    CacheGetResult<V> getResult = abstractCache.GET(key);
-                    if (getResult.isSuccess()) {
-                        ll.success = true;
-                        ll.value = getResult.getValue();
-                        return getResult.getValue();
-                    } else {
-                        V loadedValue = newLoader.apply(key);
-                        ll.success = true;
-                        ll.value = loadedValue;
-                        cacheUpdater.accept(loadedValue);
-                        return loadedValue;
-                    }
+                    V loadedValue = newLoader.apply(key);
+                    ll.success = true;
+                    ll.value = loadedValue;
+                    cacheUpdater.accept(loadedValue);
+                    return loadedValue;
                 } finally {
+                    ll.signal.countDown();
                     if (create[0]) {
-                        ll.signal.countDown();
                         loaderMap.remove(lockKey);
                     }
                 }
@@ -248,12 +245,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
     @Override
     public final CacheResult PUT(K key, V value, long expireAfterWrite, TimeUnit timeUnit) {
         long t = System.currentTimeMillis();
-        CacheResult result;
-        if (key == null) {
-            result = CacheResult.FAIL_ILLEGAL_ARGUMENT;
-        } else {
-            result = do_PUT(key, value, expireAfterWrite, timeUnit);
-        }
+        CacheResult result = do_PUT(key, value, expireAfterWrite, timeUnit);
         result.future().thenRun(() -> {
             CachePutEvent event = new CachePutEvent(this, System.currentTimeMillis() - t, key, value, result);
             notify(event);
@@ -266,12 +258,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
     @Override
     public final CacheResult PUT_ALL(Map<? extends K, ? extends V> map, long expireAfterWrite, TimeUnit timeUnit) {
         long t = System.currentTimeMillis();
-        CacheResult result;
-        if (map == null) {
-            result = CacheResult.FAIL_ILLEGAL_ARGUMENT;
-        } else {
-            result = do_PUT_ALL(map, expireAfterWrite, timeUnit);
-        }
+        CacheResult result = do_PUT_ALL(map, expireAfterWrite, timeUnit);
         result.future().thenRun(() -> {
             CachePutAllEvent event = new CachePutAllEvent(this, System.currentTimeMillis() - t, map, result);
             notify(event);
@@ -284,12 +271,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
     @Override
     public final CacheResult REMOVE(K key) {
         long t = System.currentTimeMillis();
-        CacheResult result;
-        if (key == null) {
-            result = CacheResult.FAIL_ILLEGAL_ARGUMENT;
-        } else {
-            result = do_REMOVE(key);
-        }
+        CacheResult result = do_REMOVE(key);
         result.future().thenRun(() -> {
             CacheRemoveEvent event = new CacheRemoveEvent(this, System.currentTimeMillis() - t, key, result);
             notify(event);
@@ -302,12 +284,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
     @Override
     public final CacheResult REMOVE_ALL(Set<? extends K> keys) {
         long t = System.currentTimeMillis();
-        CacheResult result;
-        if (keys == null) {
-            result = CacheResult.FAIL_ILLEGAL_ARGUMENT;
-        } else {
-            result = do_REMOVE_ALL(keys);
-        }
+        CacheResult result = do_REMOVE_ALL(keys);
         result.future().thenRun(() -> {
             CacheRemoveAllEvent event = new CacheRemoveAllEvent(this, System.currentTimeMillis() - t, keys, result);
             notify(event);
@@ -320,12 +297,7 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
     @Override
     public final CacheResult PUT_IF_ABSENT(K key, V value, long expireAfterWrite, TimeUnit timeUnit) {
         long t = System.currentTimeMillis();
-        CacheResult result;
-        if (key == null) {
-            result = CacheResult.FAIL_ILLEGAL_ARGUMENT;
-        } else {
-            result = do_PUT_IF_ABSENT(key, value, expireAfterWrite, timeUnit);
-        }
+        CacheResult result = do_PUT_IF_ABSENT(key, value, expireAfterWrite, timeUnit);
         result.future().thenRun(() -> {
             CachePutEvent event = new CachePutEvent(this, System.currentTimeMillis() - t, key, value, result);
             notify(event);
@@ -335,19 +307,10 @@ public abstract class AbstractCache<K, V> implements Cache<K, V> {
 
     protected abstract CacheResult do_PUT_IF_ABSENT(K key, V value, long expireAfterWrite, TimeUnit timeUnit);
 
-    @Override
-    public void close() {
-        this.closed = true;
-    }
-
-    public boolean isClosed() {
-        return this.closed;
-    }
-
     static class LoaderLock {
         CountDownLatch signal;
         Thread loaderThread;
-        volatile boolean success;
-        volatile Object value;
+        boolean success;
+        Object value;
     }
 }

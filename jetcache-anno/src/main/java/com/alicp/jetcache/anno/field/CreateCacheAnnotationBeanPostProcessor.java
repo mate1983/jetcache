@@ -29,7 +29,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author <a href="mailto:areyouok@gmail.com">huangli</a>
  * @see org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor
  */
-@SuppressWarnings("AliMissingOverrideAnnotation")
 @Component // necessary when spring boot version <= 1.2.X
 public class CreateCacheAnnotationBeanPostProcessor extends AutowiredAnnotationBeanPostProcessor {
 
@@ -57,7 +56,6 @@ public class CreateCacheAnnotationBeanPostProcessor extends AutowiredAnnotationB
 
     //@Override
     //since 5.1
-    @SuppressWarnings("AliMissingOverrideAnnotation")
     public PropertyValues postProcessProperties(PropertyValues pvs, Object bean, String beanName) {
         InjectionMetadata metadata = findAutowiringMetadata(beanName, bean.getClass(), pvs);
         try {
@@ -178,9 +176,9 @@ public class CreateCacheAnnotationBeanPostProcessor extends AutowiredAnnotationB
         @Override
         protected void inject(Object bean, String beanName, PropertyValues pvs) throws Throwable {
             beanFactory.registerDependentBean(beanName, "globalCacheConfig");
-            CreateCacheWrapper wrapper = new CreateCacheWrapper(beanFactory, ann, field);
+            LazyInitCache cache = new LazyInitCache(beanFactory, ann, field);
             field.setAccessible(true);
-            field.set(bean, wrapper.getCache());
+            field.set(bean, cache);
         }
     }
 

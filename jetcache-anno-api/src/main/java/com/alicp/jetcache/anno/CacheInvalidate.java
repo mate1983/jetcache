@@ -10,7 +10,6 @@ import java.lang.annotation.*;
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
-@Repeatable(CacheInvalidateContainer.class)
 @Target(ElementType.METHOD)
 public @interface CacheInvalidate {
 

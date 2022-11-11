@@ -3,13 +3,7 @@
  */
 package com.alicp.jetcache.embedded;
 
-import com.alicp.jetcache.AbstractCache;
-import com.alicp.jetcache.CacheConfig;
-import com.alicp.jetcache.CacheGetResult;
-import com.alicp.jetcache.CacheResult;
-import com.alicp.jetcache.CacheResultCode;
-import com.alicp.jetcache.CacheValueHolder;
-import com.alicp.jetcache.MultiGetResult;
+import com.alicp.jetcache.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -49,6 +43,9 @@ public abstract class AbstractEmbeddedCache<K, V> extends AbstractCache<K, V> {
 
     @Override
     protected CacheGetResult<V> do_GET(K key) {
+        if (key == null) {
+            return new CacheGetResult<V>(CacheResultCode.FAIL, CacheResult.MSG_ILLEGAL_ARGUMENT, null);
+        }
         Object newKey = buildKey(key);
         CacheValueHolder<V> holder = (CacheValueHolder<V>) innerMap.getValue(newKey);
         return parseHolderResult(holder);
@@ -78,6 +75,9 @@ public abstract class AbstractEmbeddedCache<K, V> extends AbstractCache<K, V> {
 
     @Override
     protected MultiGetResult<K, V> do_GET_ALL(Set<? extends K> keys) {
+        if (keys == null) {
+            return new MultiGetResult<>(CacheResultCode.FAIL, CacheResult.MSG_ILLEGAL_ARGUMENT, null);
+        }
         ArrayList<K> keyList = new ArrayList<K>(keys.size());
         ArrayList<Object> newKeyList = new ArrayList<Object>(keys.size());
         keys.stream().forEach((k) -> {
@@ -99,6 +99,9 @@ public abstract class AbstractEmbeddedCache<K, V> extends AbstractCache<K, V> {
 
     @Override
     protected CacheResult do_PUT(K key, V value, long expireAfterWrite, TimeUnit timeUnit) {
+        if (key == null) {
+            return CacheResult.FAIL_ILLEGAL_ARGUMENT;
+        }
         CacheValueHolder<V> cacheObject = new CacheValueHolder(value ,timeUnit.toMillis(expireAfterWrite));
         innerMap.putValue(buildKey(key), cacheObject);
         return CacheResult.SUCCESS_WITHOUT_MSG;
@@ -106,6 +109,9 @@ public abstract class AbstractEmbeddedCache<K, V> extends AbstractCache<K, V> {
 
     @Override
     protected CacheResult do_PUT_ALL(Map<? extends K, ? extends V> map, long expireAfterWrite, TimeUnit timeUnit) {
+        if (map == null) {
+            return CacheResult.FAIL_ILLEGAL_ARGUMENT;
+        }
         HashMap newKeyMap = new HashMap();
         for (Map.Entry<? extends K, ? extends V> en : map.entrySet()) {
             CacheValueHolder<V> cacheObject = new CacheValueHolder(en.getValue(), timeUnit.toMillis(expireAfterWrite));
@@ -120,25 +126,31 @@ public abstract class AbstractEmbeddedCache<K, V> extends AbstractCache<K, V> {
 
     @Override
     protected CacheResult do_REMOVE(K key) {
+        if (key == null) {
+            return CacheResult.FAIL_ILLEGAL_ARGUMENT;
+        }
         innerMap.removeValue(buildKey(key));
         return CacheResult.SUCCESS_WITHOUT_MSG;
     }
 
     @Override
     protected CacheResult do_REMOVE_ALL(Set<? extends K> keys) {
+        if (keys == null) {
+            return CacheResult.FAIL_ILLEGAL_ARGUMENT;
+        }
         Set newKeys = keys.stream().map((key) -> buildKey(key)).collect(Collectors.toSet());
         innerMap.removeAllValues(newKeys);
 
+        final HashMap resultMap = new HashMap();
+        keys.forEach((k) -> resultMap.put(k, CacheResultCode.SUCCESS));
         return CacheResult.SUCCESS_WITHOUT_MSG;
-    }
-
-    // internal method
-    public void __removeAll(Set<? extends K> keys) {
-        innerMap.removeAllValues(keys);
     }
 
     @Override
     protected CacheResult do_PUT_IF_ABSENT(K key, V value, long expireAfterWrite, TimeUnit timeUnit) {
+        if (key == null) {
+            return CacheResult.FAIL_ILLEGAL_ARGUMENT;
+        }
         CacheValueHolder<V> cacheObject = new CacheValueHolder(value, timeUnit.toMillis(expireAfterWrite));
         if (innerMap.putIfAbsentValue(buildKey(key), cacheObject)) {
             return CacheResult.SUCCESS_WITHOUT_MSG;

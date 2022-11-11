@@ -1,63 +1,61 @@
 /**
- * Created on 2022/08/02.
+ * Created on 2018/3/27.
  */
 package com.alicp.jetcache.anno.support;
 
-import com.alicp.jetcache.Cache;
-import com.alicp.jetcache.CacheMonitor;
-import com.alicp.jetcache.RefreshPolicy;
-import com.alicp.jetcache.SimpleCacheManager;
-import com.alicp.jetcache.anno.CacheType;
-import com.alicp.jetcache.external.MockRemoteCacheBuilder;
-import com.alicp.jetcache.template.QuickConfig;
-import com.alicp.jetcache.test.anno.TestUtil;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
+import com.alicp.jetcache.CacheConfigException;
+import com.alicp.jetcache.support.*;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * @author <a href="mailto:areyouok@gmail.com">huangli</a>
  */
 public class ConfigProviderTest {
-    private SimpleCacheManager cacheManager;
-    private ConfigProvider configProvider;
 
-    @BeforeEach
-    public void setup() {
-        MockRemoteCacheBuilder.reset();
-        GlobalCacheConfig globalCacheConfig = TestUtil.createGloableConfig();
-        globalCacheConfig.setStatIntervalMinutes(1);
-        configProvider = new ConfigProvider();
-        configProvider.setMetricsCallback(i -> {
-        });
-        configProvider.setGlobalCacheConfig(globalCacheConfig);
-        configProvider.init();
-        cacheManager = new JetCacheBaseBeans().cacheManager(configProvider);
-    }
+    @Test
+    public void parseQueryParameters() {
+        assertEquals(0, ConfigProvider.parseQueryParameters(null).size());
+        assertEquals("b", ConfigProvider.parseQueryParameters("a=b").get("a"));
 
-    @AfterEach
-    public void teardown() {
-        configProvider.shutdown();
-        MockRemoteCacheBuilder.reset();
+        Map<String, String> m = ConfigProvider.parseQueryParameters("a=b&c=d");
+        assertEquals("b", m.get("a"));
+        assertEquals("d", m.get("c"));
+        m = ConfigProvider.parseQueryParameters("a&b=");
+        assertFalse(m.containsKey("a"));
+        assertFalse(m.containsKey("b"));
     }
 
     @Test
-    public void test() {
-        Assertions.assertEquals(2, cacheManager.getCacheBuilderTemplate().getCacheMonitorInstallers().size());
-        RefreshPolicy rp = new RefreshPolicy();
-        rp.setRefreshMillis(100);
-        QuickConfig qc = QuickConfig.newBuilder("a")
-                .cacheType(CacheType.BOTH)
-                .syncLocal(true)
-                .refreshPolicy(rp).build();
-        Cache c = cacheManager.getOrCreateCache(qc);
-        Assertions.assertTrue(MockRemoteCacheBuilder.isSubscribeStart());
-        List<CacheMonitor> monitors = c.config().getMonitors();
-        Assertions.assertEquals(2, monitors.size());
-        c.put("K1", "V1");
-        Assertions.assertEquals("K1", MockRemoteCacheBuilder.getLastPublishMessage().getKeys()[0]);
+    public void parseValueEncoder() {
+        ConfigProvider cp = new ConfigProvider();
+        AbstractValueEncoder encoder = (AbstractValueEncoder) cp.parseValueEncoder("kryo");
+        assertEquals(KryoValueEncoder.class, encoder.getClass());
+        assertTrue(encoder.isUseIdentityNumber());
+
+        encoder = (AbstractValueEncoder) cp.parseValueEncoder("java?useIdentityNumber=false");
+        assertEquals(JavaValueEncoder.class, encoder.getClass());
+        assertFalse(encoder.isUseIdentityNumber());
+
+        assertThrows(CacheConfigException.class, () -> cp.parseValueEncoder(null));
+        assertThrows(CacheConfigException.class, () -> cp.parseValueEncoder("xxx"));
+    }
+
+    @Test
+    public void parseValueDecoder() {
+        ConfigProvider cp = new ConfigProvider();
+        AbstractValueDecoder decoder = (AbstractValueDecoder) cp.parseValueDecoder("kryo");
+        assertEquals(KryoValueDecoder.class, decoder.getClass());
+        assertTrue(decoder.isUseIdentityNumber());
+
+        decoder = (AbstractValueDecoder) cp.parseValueDecoder("java?useIdentityNumber=false");
+        assertEquals(JavaValueDecoder.class, decoder.getClass());
+        assertFalse(decoder.isUseIdentityNumber());
+
+        assertThrows(CacheConfigException.class, () -> cp.parseValueDecoder(null));
+        assertThrows(CacheConfigException.class, () -> cp.parseValueDecoder("xxx"));
     }
 }

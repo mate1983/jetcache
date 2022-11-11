@@ -4,22 +4,18 @@
 package com.alicp.jetcache.anno.method;
 
 import com.alicp.jetcache.Cache;
-import com.alicp.jetcache.CacheManager;
 import com.alicp.jetcache.anno.CacheConsts;
 import com.alicp.jetcache.anno.support.CacheUpdateAnnoConfig;
 import com.alicp.jetcache.anno.support.ConfigMap;
-import com.alicp.jetcache.anno.support.ConfigProvider;
 import com.alicp.jetcache.anno.support.GlobalCacheConfig;
-import com.alicp.jetcache.anno.support.JetCacheBaseBeans;
 import com.alicp.jetcache.embedded.LinkedHashMapCacheBuilder;
 import com.alicp.jetcache.support.FastjsonKeyConvertor;
-import com.alicp.jetcache.test.anno.TestUtil;
 import com.alicp.jetcache.testsupport.CountClass;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -27,8 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * @author <a href="mailto:areyouok@gmail.com">huangli</a>
  */
 public class CacheHandlerUpdateTest {
-    private ConfigProvider configProvider;
-    private CacheManager cacheManager;
+    private GlobalCacheConfig globalCacheConfig;
     private CacheInvokeConfig cacheInvokeConfig;
     private CountClass count;
     private Cache cache;
@@ -38,11 +33,10 @@ public class CacheHandlerUpdateTest {
 
     @BeforeEach
     public void setup() throws Exception {
-        GlobalCacheConfig globalCacheConfig = TestUtil.createGloableConfig();
-        configProvider = new ConfigProvider();
-        configProvider.setGlobalCacheConfig(globalCacheConfig);
-        configProvider.init();
-        cacheManager = new JetCacheBaseBeans().cacheManager(configProvider);
+        globalCacheConfig = new GlobalCacheConfig();
+        globalCacheConfig.setLocalCacheBuilders(new HashMap<>());
+        globalCacheConfig.setRemoteCacheBuilders(new HashMap<>());
+        globalCacheConfig.init();
         cache = LinkedHashMapCacheBuilder.createLinkedHashMapCacheBuilder()
                 .keyConvertor(FastjsonKeyConvertor.INSTANCE)
                 .buildCache();
@@ -55,7 +49,7 @@ public class CacheHandlerUpdateTest {
         count = new CountClass();
 
         Method method = CountClass.class.getMethod("update", String.class, int.class);
-        cacheInvokeContext = configProvider.newContext(cacheManager).createCacheInvokeContext(configMap);
+        cacheInvokeContext = globalCacheConfig.getCacheContext().createCacheInvokeContext(configMap);
         cacheInvokeContext.setCacheInvokeConfig(cacheInvokeConfig);
         updateAnnoConfig = new CacheUpdateAnnoConfig();
         updateAnnoConfig.setCondition(CacheConsts.UNDEFINED_STRING);
@@ -69,12 +63,6 @@ public class CacheHandlerUpdateTest {
         cacheInvokeContext.setInvoker(() -> cacheInvokeContext.getMethod().invoke(count, cacheInvokeContext.getArgs()));
         cacheInvokeContext.setCacheFunction((a, b) -> cache);
     }
-
-    @AfterEach
-    public void tearDown() {
-        configProvider.shutdown();
-    }
-
 
     @Test
     public void testUpdate() throws Throwable {

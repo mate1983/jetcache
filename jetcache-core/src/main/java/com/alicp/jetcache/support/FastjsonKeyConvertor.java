@@ -14,7 +14,6 @@ public class FastjsonKeyConvertor implements Function<Object, Object> {
 
     public static final FastjsonKeyConvertor INSTANCE = new FastjsonKeyConvertor();
 
-    @Override
     public Object apply(Object originalKey) {
         if (originalKey == null) {
             return null;

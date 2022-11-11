@@ -1,11 +1,8 @@
 package com.alicp.jetcache.external;
 
 import com.alicp.jetcache.AbstractCacheBuilder;
-import com.alicp.jetcache.CacheManager;
-import com.alicp.jetcache.support.BroadcastManager;
 
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * Created on 16/9/9.
@@ -22,30 +19,8 @@ public abstract class ExternalCacheBuilder<T extends ExternalCacheBuilder<T>> ex
         return (ExternalCacheConfig) config;
     }
 
-    public boolean supportBroadcast() {
-        return false;
-    }
-
-    public BroadcastManager createBroadcastManager(CacheManager cacheManager) {
-        return null;
-    }
-
-    public T broadcastChannel(String broadcastChannel) {
-        getConfig().setBroadcastChannel(broadcastChannel);
-        return self();
-    }
-
-    public void setBroadcastChannel(String broadcastChannel) {
-        getConfig().setBroadcastChannel(broadcastChannel);
-    }
-
-    public T keyPrefix(String keyPrefix) {
-        getConfig().setKeyPrefixSupplier(() -> keyPrefix);
-        return self();
-    }
-
-    public T keyPrefixSupplier(Supplier<String> keyPrefixSupplier) {
-        getConfig().setKeyPrefixSupplier(keyPrefixSupplier);
+    public T keyPrefix(String keyPrefix){
+        getConfig().setKeyPrefix(keyPrefix);
         return self();
     }
 
@@ -60,15 +35,7 @@ public abstract class ExternalCacheBuilder<T extends ExternalCacheBuilder<T>> ex
     }
 
     public void setKeyPrefix(String keyPrefix){
-        if (keyPrefix != null) {
-            getConfig().setKeyPrefixSupplier(() -> keyPrefix);
-        } else {
-            getConfig().setKeyPrefixSupplier(null);
-        }
-    }
-
-    public void setKeyPrefixSupplier(Supplier<String> keyPrefixSupplier){
-        getConfig().setKeyPrefixSupplier(keyPrefixSupplier);
+        getConfig().setKeyPrefix(keyPrefix);
     }
 
     public void setValueEncoder(Function<Object, byte[]> valueEncoder){

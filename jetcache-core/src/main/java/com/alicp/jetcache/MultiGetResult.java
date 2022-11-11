@@ -11,7 +11,7 @@ import java.util.concurrent.CompletionStage;
  * @author <a href="mailto:areyouok@gmail.com">huangli</a>
  */
 public class MultiGetResult<K, V> extends CacheResult {
-    private volatile Map<K, CacheGetResult<V>> values;
+    private Map<K, CacheGetResult<V>> values;
 
     public MultiGetResult(CompletionStage<ResultData> future) {
         super(future);
@@ -32,14 +32,14 @@ public class MultiGetResult<K, V> extends CacheResult {
 
     @Override
     protected void fetchResultSuccess(ResultData resultData) {
-        values = (Map<K, CacheGetResult<V>>) resultData.getOriginData();
         super.fetchResultSuccess(resultData);
+        values = (Map<K, CacheGetResult<V>>) resultData.getOriginData();
     }
 
     @Override
     protected void fetchResultFail(Throwable e) {
-        values = null;
         super.fetchResultFail(e);
+        values = null;
     }
 
     public Map<K, V> unwrapValues() {

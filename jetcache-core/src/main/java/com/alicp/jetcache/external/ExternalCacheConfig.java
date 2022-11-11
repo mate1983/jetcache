@@ -5,7 +5,6 @@ import com.alicp.jetcache.support.DecoderMap;
 import com.alicp.jetcache.support.JavaValueEncoder;
 
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * Created on 16/9/9.
@@ -13,26 +12,16 @@ import java.util.function.Supplier;
  * @author <a href="mailto:areyouok@gmail.com">huangli</a>
  */
 public class ExternalCacheConfig<K, V> extends CacheConfig<K, V> {
-
-    private Supplier<String> keyPrefixSupplier;
+    private String keyPrefix;
     private Function<Object, byte[]> valueEncoder = JavaValueEncoder.INSTANCE;
     private Function<byte[], Object> valueDecoder = DecoderMap.defaultJavaValueDecoder();
-    private String broadcastChannel;
 
     public String getKeyPrefix() {
-        return keyPrefixSupplier == null ? null : keyPrefixSupplier.get();
+        return keyPrefix;
     }
 
     public void setKeyPrefix(String keyPrefix) {
-        this.keyPrefixSupplier = () -> keyPrefix;
-    }
-
-    public Supplier<String> getKeyPrefixSupplier() {
-        return keyPrefixSupplier;
-    }
-
-    public void setKeyPrefixSupplier(Supplier<String> keyPrefixSupplier) {
-        this.keyPrefixSupplier = keyPrefixSupplier;
+        this.keyPrefix = keyPrefix;
     }
 
     public Function<Object, byte[]> getValueEncoder() {
@@ -49,13 +38,5 @@ public class ExternalCacheConfig<K, V> extends CacheConfig<K, V> {
 
     public void setValueDecoder(Function<byte[], Object> valueDecoder) {
         this.valueDecoder = valueDecoder;
-    }
-
-    public String getBroadcastChannel() {
-        return broadcastChannel;
-    }
-
-    public void setBroadcastChannel(String broadcastChannel) {
-        this.broadcastChannel = broadcastChannel;
     }
 }
