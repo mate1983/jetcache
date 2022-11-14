@@ -35,14 +35,6 @@ public class CacheConfigUtil {
         if (cc.getExpire() > 0 && !CacheConsts.isUndefined(cc.getExpireCondition())) {
             throw new RuntimeException("Can't both setting expire and expire condition");
         }
-        //有配置表达式，直接解析
-        if (!CacheConsts.isUndefined(cc.getExpireCondition())) {
-            Long expire = ExpressionUtil.evalExpireCondition(cc);
-            if (null == expire) {
-                throw new RuntimeException("cal expire condition error");
-            }
-            cc.setExpire(expire);
-        }
         cc.setLocalExpire(anno.localExpire());
         cc.setLocalLimit(anno.localLimit());
         cc.setCacheNullValue(anno.cacheNullValue());

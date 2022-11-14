@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 /**
  * @author <a href="mailto:areyouok@gmail.com">huangli</a>
  */
-class ExpressionUtil {
+public class ExpressionUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(ExpressionUtil.class);
 

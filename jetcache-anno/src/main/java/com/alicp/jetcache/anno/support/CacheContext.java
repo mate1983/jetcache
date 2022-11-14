@@ -12,6 +12,7 @@ import com.alicp.jetcache.anno.EnableCache;
 import com.alicp.jetcache.anno.method.CacheHandler;
 import com.alicp.jetcache.anno.method.CacheInvokeConfig;
 import com.alicp.jetcache.anno.method.CacheInvokeContext;
+import com.alicp.jetcache.anno.method.ExpressionUtil;
 import com.alicp.jetcache.embedded.EmbeddedCacheBuilder;
 import com.alicp.jetcache.external.ExternalCacheBuilder;
 import com.alicp.jetcache.support.DefaultCacheMonitor;
@@ -195,8 +196,16 @@ public class CacheContext {
         }
         cacheBuilder = (ExternalCacheBuilder) cacheBuilder.clone();
 
-        if (cachedAnnoConfig.getExpire() > 0 ) {
+        if (cachedAnnoConfig.getExpire() > 0) {
             cacheBuilder.expireAfterWrite(cachedAnnoConfig.getExpire(), cachedAnnoConfig.getTimeUnit());
+        }
+        //有配置表达式，解析动态的过期时间设置
+        if (!CacheConsts.isUndefined(cachedAnnoConfig.getExpireCondition())) {
+            Long expire = ExpressionUtil.evalExpireCondition(cachedAnnoConfig);
+            if (null == expire) {
+                throw new RuntimeException("cal expire condition error");
+            }
+            cacheBuilder.expireAfterWrite(expire, cachedAnnoConfig.getTimeUnit());
         }
 
         if (cacheBuilder.getConfig().getKeyPrefix() != null) {
