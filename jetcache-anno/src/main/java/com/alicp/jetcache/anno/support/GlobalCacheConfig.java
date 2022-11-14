@@ -8,6 +8,7 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -23,6 +24,8 @@ public class GlobalCacheConfig implements InitializingBean, DisposableBean {
 
     private Map<String, CacheBuilder> localCacheBuilders;
     private Map<String, CacheBuilder> remoteCacheBuilders;
+
+    private static Map<String, Object> mvelContextObjectMap = new HashMap<>();
 
     @Autowired(required = false)
     private ConfigProvider configProvider = new SpringConfigProvider();
@@ -122,5 +125,9 @@ public class GlobalCacheConfig implements InitializingBean, DisposableBean {
 
     public void setEnableMethodCache(boolean enableMethodCache) {
         this.enableMethodCache = enableMethodCache;
+    }
+
+    public static Map<String, Object> getMvelContextObjectMap() {
+        return mvelContextObjectMap;
     }
 }

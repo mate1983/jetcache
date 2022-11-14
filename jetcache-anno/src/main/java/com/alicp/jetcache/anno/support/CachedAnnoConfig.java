@@ -25,6 +25,7 @@ public class CachedAnnoConfig extends CacheAnnoConfig {
     private String keyConvertor;
     private String postCondition;
 
+    private String expireCondition;
     private Function<Object, Boolean> postConditionEvaluator;
     private RefreshPolicy refreshPolicy;
     private PenetrationProtectConfig penetrationProtectConfig;
@@ -132,5 +133,13 @@ public class CachedAnnoConfig extends CacheAnnoConfig {
 
     public void setLocalExpire(long localExpire) {
         this.localExpire = localExpire;
+    }
+
+    public String getExpireCondition() {
+        return expireCondition;
+    }
+
+    public void setExpireCondition(String expireCondition) {
+        this.expireCondition = expireCondition;
     }
 }

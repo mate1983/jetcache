@@ -117,4 +117,11 @@ public @interface Cached {
      */
     String postCondition() default CacheConsts.UNDEFINED_STRING;
 
+    /**
+     * 动态的过期计算器
+     *
+     * @return
+     */
+    String expireCondition() default CacheConsts.UNDEFINED_STRING;
+
 }

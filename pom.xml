@@ -6,7 +6,7 @@
     <groupId>com.alicp.jetcache</groupId>
     <artifactId>jetcache-parent</artifactId>
     <packaging>pom</packaging>
-    <version>2.5.16</version>
+    <version>2.5.16-1</version>
 
     <name>jetcache</name>
     <description>a Java cache abstraction which provides consistent use for various caching solutions</description>
@@ -134,7 +134,7 @@
                         <format>html</format>
                         <format>xml</format>
                     </formats>
-                    <check />
+                    <check/>
                 </configuration>
             </plugin>
             <plugin>
@@ -335,6 +335,12 @@
             <groupId>org.apiguardian</groupId>
             <artifactId>apiguardian-api</artifactId>
             <version>1.0.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>5.8.9</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

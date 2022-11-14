@@ -76,6 +76,20 @@ class ExpressionUtil {
         }
     }
 
+    public static Long evalExpireCondition(CachedAnnoConfig cac) {
+        String keyScript = cac.getExpireCondition();
+        try {
+            if (!CacheConsts.isUndefined(keyScript)) {
+                ExpressionEvaluator e = new ExpressionEvaluator(keyScript, cac.getDefineMethod());
+                return (Long) e.apply(cac.getDefineMethod());
+            }
+        } catch (Exception e) {
+            logger.error("error occurs when eval key \"" + keyScript + "\" in " + cac.getClass() + "." + cac.getName() + ":" + e.getMessage(), e);
+            return null;
+        }
+        return Long.MIN_VALUE;
+    }
+
     public static Object evalValue(CacheInvokeContext context, CacheUpdateAnnoConfig cac) {
         String valueScript = cac.getValue();
         try {

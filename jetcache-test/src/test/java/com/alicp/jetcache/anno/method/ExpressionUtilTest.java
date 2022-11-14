@@ -3,13 +3,21 @@
  */
 package com.alicp.jetcache.anno.method;
 
+import cn.hutool.core.date.DatePattern;
+import cn.hutool.core.date.DateUtil;
 import com.alicp.jetcache.anno.CacheConsts;
 import com.alicp.jetcache.anno.support.CacheUpdateAnnoConfig;
 import com.alicp.jetcache.anno.support.CachedAnnoConfig;
+import com.alicp.jetcache.anno.support.GlobalCacheConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mvel2.integration.VariableResolverFactory;
+import org.mvel2.integration.impl.MapVariableResolverFactory;
 
 import java.lang.reflect.Method;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -43,6 +51,7 @@ public class ExpressionUtilTest {
         context.setArgs(new Object[2]);
         assertTrue(ExpressionUtil.evalCondition(context, cachedAnnoConfig));
     }
+
     @Test
     public void testCondition2() {
         cachedAnnoConfig.setCondition("mvel{args[0].length()==4}");
@@ -77,6 +86,28 @@ public class ExpressionUtilTest {
         cachedAnnoConfig.setPostCondition(CacheConsts.UNDEFINED_STRING);
         context.setArgs(new Object[]{"1234", 5678});
         assertTrue(ExpressionUtil.evalPostCondition(context, cachedAnnoConfig));
+    }
+
+    @Test
+    public void evalExpireCondition1() {
+        cachedAnnoConfig.setExpireCondition(CacheConsts.UNDEFINED_STRING);
+        context.setArgs(new Object[]{"1234", 5678});
+        assertNull(ExpressionUtil.evalExpireCondition(cachedAnnoConfig));
+    }
+
+    @Test
+    public void evalExpireCondition2() {
+//        Map ctx = new HashMap();
+//        VariableResolverFactory functionFactory = new MapVariableResolverFactory(ctx);
+//        ctx.put("DateUtil", DateUtil.class);
+
+        GlobalCacheConfig.getMvelContextObjectMap().put("DateUtil", DateUtil.class);
+        cachedAnnoConfig.setExpireCondition("mvel{DateUtil.beginOfDay(DateUtil.tomorrow()).getTime()+3600000 *5}");
+        context.setArgs(new Object[]{"1234", 5678});
+        System.out.println(DateUtil.format(DateUtil.beginOfDay(DateUtil.tomorrow()), DatePattern.NORM_DATETIME_MINUTE_FORMAT));
+        Long expire = ExpressionUtil.evalExpireCondition( cachedAnnoConfig);
+        System.out.println(DateUtil.format(new Date(expire), DatePattern.NORM_DATETIME_MINUTE_FORMAT));
+        assertNotNull(expire);
     }
 
     @Test

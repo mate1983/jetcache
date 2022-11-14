@@ -4,7 +4,9 @@
 package com.alicp.jetcache.anno.method;
 
 import com.alicp.jetcache.CacheConfigException;
+import com.alicp.jetcache.anno.support.GlobalCacheConfig;
 import org.mvel2.MVEL;
+import org.mvel2.integration.impl.MapVariableResolverFactory;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
 import org.springframework.expression.EvaluationContext;
@@ -14,6 +16,7 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -81,12 +84,11 @@ class MvelEvaluator implements Function<Object, Object> {
 
     @Override
     public Object apply(Object context) {
-        return MVEL.eval(script, context);
+        return MVEL.eval(script, context, new MapVariableResolverFactory(GlobalCacheConfig.getMvelContextObjectMap()));
     }
 }
 
 class SpelEvaluator implements Function<Object, Object> {
-
     private static ExpressionParser parser;
     private static ParameterNameDiscoverer parameterNameDiscoverer;
 
