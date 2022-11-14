@@ -6,7 +6,7 @@
     <groupId>com.alicp.jetcache</groupId>
     <artifactId>jetcache-parent</artifactId>
     <packaging>pom</packaging>
-    <version>2.5.16-1</version>
+    <version>2.5.16.1-SNAPSHOT</version>
 
     <name>jetcache</name>
     <description>a Java cache abstraction which provides consistent use for various caching solutions</description>
@@ -379,13 +379,10 @@
             </build>
             <distributionManagement>
                 <snapshotRepository>
-                    <id>oss</id>
-                    <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+                    <id>nexus</id>
+                    <name>snapshots</name>
+                    <url>http://mvn.clinks.com.cn/repository/clinks-3rdParty/</url>
                 </snapshotRepository>
-                <repository>
-                    <id>oss</id>
-                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-                </repository>
             </distributionManagement>
         </profile>
     </profiles>
